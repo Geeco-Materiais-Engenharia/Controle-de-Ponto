@@ -9,8 +9,10 @@ import re
 try:
     locale.setlocale(locale.LC_TIME, "Portuguese_Brazil.1252")
 except locale.Error:
-    # Para Linux/macOS ou fallback caso o locale não esteja disponível
-    locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
+    try:
+        locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")  # Linux/macOS
+    except locale.Error:
+        locale.setlocale(locale.LC_TIME, '')  # Fallback: usa o locale padrão do sistema
 
 def format_punches_as_dataframe(punches: List[Dict], holidays: List) -> pd.DataFrame:
     """
