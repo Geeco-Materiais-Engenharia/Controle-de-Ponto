@@ -1,0 +1,6 @@
+streamlit
+streamlit-cookies-controller
+cryptography
+pandas
+requests
+python-dotenv
