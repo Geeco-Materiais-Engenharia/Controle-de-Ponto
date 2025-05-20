@@ -1,26 +1,18 @@
 from datetime import datetime
 import pandas as pd
-import locale
-from api.api import get_punch
+from babel.dates import format_date, format_datetime, format_time
+from babel import Locale
 
-# Define o locale para datas em português do Brasil (Windows)
-try:
-    locale.setlocale(locale.LC_TIME, "Portuguese_Brazil.1252")
-except locale.Error:
-    try:
-        locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")  # Linux/macOS
-    except locale.Error:
-        locale.setlocale(locale.LC_TIME, '')  # Fallback: usa o locale padrão do sistema
+# Configura o locale para português do Brasil
+locale = Locale('pt', 'BR')
 
 def converter_data_para_ms(data: datetime) -> int:
     """Converte datetime para milissegundos desde epoch."""
     return int(data.timestamp() * 1000)
 
-import pandas as pd
-
 def converter_data_iso_para_ddmmaaaa(data_iso: str) -> str:
     """
-    Converte uma data no formato ISO (YYYY-MM-DD) para o formato brasileiro (DD/MM/AAAA) usando pandas.
+    Converte uma data no formato ISO (YYYY-MM-DD) para o formato brasileiro (DD/MM/AAAA) usando Babel.
 
     Args:
         data_iso (str): Data no formato ISO, como '2025-05-12'.
@@ -32,15 +24,10 @@ def converter_data_iso_para_ddmmaaaa(data_iso: str) -> str:
         ValueError: Se a string fornecida não for uma data válida no formato ISO.
     """
     try:
-        # Tenta converter a string para um objeto datetime e formatar para DD/MM/AAAA
-        data_formatada = pd.to_datetime(data_iso, errors='raise').strftime("%d/%m/%Y")
-        return data_formatada
+        data = datetime.strptime(data_iso, "%Y-%m-%d")
+        return format_date(data, format='short', locale=locale)
     except Exception as e:
-        # Lança um erro mais claro para o usuário em caso de falha na conversão
         raise ValueError(f"Data inválida ou em formato incorreto: '{data_iso}'. Esperado 'YYYY-MM-DD'.") from e
-
-from datetime import datetime
-import locale
 
 def obter_dia_semana(data_iso: str) -> str:
     """
@@ -57,11 +44,9 @@ def obter_dia_semana(data_iso: str) -> str:
     """
     try:
         data = datetime.strptime(data_iso, "%Y-%m-%d")
-        return data.strftime('%A')  # Nome completo do dia da semana
+        return format_date(data, format='full', locale=locale).split(',')[0].lower()
     except ValueError:
         raise ValueError(f"Data inválida ou em formato incorreto: '{data_iso}'. Esperado 'YYYY-MM-DD'.")
-    except locale.Error:
-        raise RuntimeError("O locale 'pt_BR.UTF-8' não está disponível no sistema. Verifique as configurações regionais.")
 
 def converter_milisegundos_para_hhmm(ms: int) -> str:
     """
@@ -85,9 +70,9 @@ def converter_milisegundos_para_hhmm(ms: int) -> str:
     return f"{horas:02d}:{minutos:02d}"
 
 def str_to_minutes(s):
-            if not s: return 0
-            h, m = map(int, s.split(":"))
-            return h * 60 + m
+    if not s: return 0
+    h, m = map(int, s.split(":"))
+    return h * 60 + m
 
 def minutes_to_str(mins):
     sign = "-" if mins < 0 else "+"
@@ -96,7 +81,7 @@ def minutes_to_str(mins):
 
 from typing import List, Dict
 from datetime import datetime, timedelta
-import time  # Para converter datas em milissegundos
+from api.api import get_punch
 
 def fetch_punches_in_chunks(start_ms: int, end_ms: int, colaborador_id, token: str) -> List[Dict]:
     """
@@ -106,6 +91,7 @@ def fetch_punches_in_chunks(start_ms: int, end_ms: int, colaborador_id, token: s
         start_ms (int): Timestamp inicial em milissegundos.
         end_ms (int): Timestamp final em milissegundos.
         colaborador_id: ID do colaborador.
+        token (str): Token de autenticação.
 
     Returns:
         List[Dict]: Lista acumulada de registros de ponto.
