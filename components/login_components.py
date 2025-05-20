@@ -2,19 +2,11 @@ import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 from services.auth_service import encrypt_token, decrypt_token
 
-
 def show_login_form():
-    # Não chame set_page_config aqui — chame no início de app.py
+    # st.set_page_config(page_title="Login", layout="centered")
 
-    # Apenas lê do localStorage se ainda não leu
-    if "local_token_checked" not in st.session_state:
-        streamlit_js_eval(js_expressions="localStorage.getItem('auth_token')", key="get_token")
-        st.session_state.local_token_checked = True
-        st.info("🔄 Carregando informações de login...")
-        return  # Garante que o restante só rode após a leitura do token
-
-    # Pega o token lido pelo JS
-    encrypted_token = st.session_state.get("get_token", None)
+    # Lê do localStorage (chave 'auth_token') — retorna None se não existir
+    encrypted_token = streamlit_js_eval(js_expressions="localStorage.getItem('auth_token')", key="get_token")
 
     st.markdown("<h1 style='text-align: center;'>🔐 Login</h1>", unsafe_allow_html=True)
 
@@ -41,8 +33,8 @@ def show_login_form():
 
             if clear:
                 streamlit_js_eval(js_expressions="localStorage.removeItem('auth_token')", key="clear_token")
-                del st.session_state["get_token"]
                 st.success("✅ Token removido! Recarregue a página.")
+
         else:
             token = st.text_input("🔐 Token", type="password")
             submit = st.form_submit_button("Entrar")
@@ -53,6 +45,7 @@ def show_login_form():
                 else:
                     try:
                         encrypted = encrypt_token(token, name, password)
+                        # Salva o token criptografado no localStorage
                         streamlit_js_eval(js_expressions=f"localStorage.setItem('auth_token', '{encrypted}')", key="set_token")
                         st.session_state.authenticated = True
                         st.session_state.token = token
