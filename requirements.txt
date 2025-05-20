@@ -5,3 +5,4 @@ pandas
 requests
 python-dotenv
 Babel
+streamlit-js-eval
