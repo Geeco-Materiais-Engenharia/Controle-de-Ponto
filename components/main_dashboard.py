@@ -8,8 +8,10 @@ def show_date_selector():
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input("Data Inicial", value=datetime.today())
+        st.write(f"📅 Data Inicial selecionada: `{start_date.strftime('%d/%m/%Y')}`")
     with col2:
         end_date = st.date_input("Data Final", value=datetime.today())
+        st.write(f"📅 Data Final selecionada: `{end_date.strftime('%d/%m/%Y')}`")
     return start_date, end_date
 
 def show_employee_selector(colaboradores):

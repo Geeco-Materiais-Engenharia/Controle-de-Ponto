@@ -1,63 +1,55 @@
 import streamlit as st
+from streamlit_js_eval import streamlit_js_eval
 from services.auth_service import encrypt_token, decrypt_token
-from streamlit_cookies_controller import CookieController
 
 def show_login_form():
-    st.markdown("""
-        <style>
-       
-        .login-title {
-            text-align: center;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    # st.set_page_config(page_title="Login", layout="centered")
 
-    st.markdown("<h1 class='login-title'>🔐 Login</h1>", unsafe_allow_html=True)
+    # Lê do localStorage (chave 'auth_token') — retorna None se não existir
+    encrypted_token = streamlit_js_eval(js_expressions="localStorage.getItem('auth_token')", key="get_token")
 
-    cookie_controller = CookieController()
-    encrypted_token = cookie_controller.get("auth_token")
+    st.markdown("<h1 style='text-align: center;'>🔐 Login</h1>", unsafe_allow_html=True)
 
-    # Formulário
     with st.form(key="login_form"):
-        st.markdown('<div class="login-container">', unsafe_allow_html=True)
-
         name = st.text_input("👤 Nome")
         password = st.text_input("🔑 Senha", type="password")
 
         if encrypted_token:
-            col1, col2 = st.columns([1, 1])
+            col1, col2 = st.columns(2)
             with col1:
-                submit = st.form_submit_button("Entrar", use_container_width=True)
+                submit = st.form_submit_button("Entrar")
             with col2:
-                clear = st.form_submit_button("Limpar dados salvos", use_container_width=True)
+                clear = st.form_submit_button("Limpar dados")
 
             if submit:
                 try:
-                    decrypted_token = decrypt_token(encrypted_token, name, password)
-                    st.session_state.token = decrypted_token
+                    decrypted = decrypt_token(encrypted_token, name, password)
                     st.session_state.authenticated = True
+                    st.session_state.token = decrypted
+                    st.success("✅ Login realizado!")
                     st.rerun()
-                except Exception:
+                except Exception as e:
                     st.error("❌ Credenciais inválidas ou token corrompido.")
 
             if clear:
-                cookie_controller.remove("auth_token")
-                st.success("✅ Dados salvos removidos. Recarregue a página.")
+                streamlit_js_eval(js_expressions="localStorage.removeItem('auth_token')", key="clear_token")
+                st.success("✅ Token removido! Recarregue a página.")
+
         else:
             token = st.text_input("🔐 Token", type="password")
-            submit = st.form_submit_button("Entrar", use_container_width=True)
+            submit = st.form_submit_button("Entrar")
 
             if submit:
                 if not (name and password and token):
                     st.error("⚠️ Preencha todos os campos.")
                 else:
                     try:
-                        encrypted_token = encrypt_token(token, name, password)
-                        cookie_controller.set("auth_token", encrypted_token, max_age=60 * 60 * 24 * 7)
-                        st.session_state.token = token
+                        encrypted = encrypt_token(token, name, password)
+                        # Salva o token criptografado no localStorage
+                        streamlit_js_eval(js_expressions=f"localStorage.setItem('auth_token', '{encrypted}')", key="set_token")
                         st.session_state.authenticated = True
+                        st.session_state.token = token
+                        st.success("✅ Login realizado! Recarregando...")
                         st.rerun()
-                    except Exception:
+                    except Exception as e:
                         st.error("❌ Erro ao criptografar o token.")
-
-        st.markdown('</div>', unsafe_allow_html=True)
