@@ -82,7 +82,7 @@ def format_punches_as_dataframe(punches: List[Dict], holidays: List) -> pd.DataF
 
 def calcular_intervalo(pontos_str: str) -> str:
     """
-    Calcula o intervalo entre o primeiro par de batidas e o segundo (se existirem).
+    Calcula o maior intervalo entre as batidas (considerando que o intervalo do almoço é o maior)
     Exemplo de entrada: "05:55 - 11:40 | 12:42 - 16:41"
 
     Args:
@@ -92,27 +92,41 @@ def calcular_intervalo(pontos_str: str) -> str:
         str: Intervalo formatado como "HH:MM" ou string vazia se não for possível calcular
     """
     try:
-        turnos = re.split(r' - |\s*\|\s*', pontos_str)
-
-        if len(turnos) < 4:
-            return ""  # Menos de dois períodos = não dá pra calcular intervalo
-
-        if turnos[1] == turnos[2] and len(turnos) > 4:
-            primeira_saida = turnos[3]
-            segunda_entrada = turnos[4]
-        else:
-            primeira_saida = turnos[1]
-            segunda_entrada = turnos[2]
-
-        fmt = "%H:%M"
-        t1 = datetime.strptime(primeira_saida.strip(), fmt)
-        t2 = datetime.strptime(segunda_entrada.strip(), fmt)
-
-        intervalo = t2 - t1
-        if intervalo.total_seconds() < 0:
-            intervalo += timedelta(days=1)  # Trata casos em que a hora vira meia-noite
-
-        return f"{intervalo.seconds // 3600:02d}:{(intervalo.seconds % 3600) // 60:02d}"
+        if not pontos_str or pontos_str == "COMPENSAÇÃO FERIADO":
+            return ""
+            
+        # Extrai todos os horários da string
+        horarios = re.findall(r'(\d{2}:\d{2})', pontos_str)
+        if len(horarios) < 2:
+            return ""
+            
+        # Se houver apenas 2 horários (uma entrada e uma saída), não há intervalo
+        if len(horarios) == 2:
+            return ""
+            
+        # Calcula todos os intervalos possíveis entre saídas e entradas subsequentes
+        intervalos = []
+        for i in range(1, len(horarios)-1, 2):
+            saida = horarios[i]
+            entrada = horarios[i+1]
+            
+            fmt = "%H:%M"
+            t1 = datetime.strptime(saida.strip(), fmt)
+            t2 = datetime.strptime(entrada.strip(), fmt)
+            
+            intervalo = t2 - t1
+            if intervalo.total_seconds() < 0:
+                intervalo += timedelta(days=1)  # Trata casos em que a hora vira meia-noite
+                
+            intervalos.append(intervalo)
+            
+        if not intervalos:
+            return ""
+            
+        # Pega o maior intervalo (normalmente o do almoço)
+        maior_intervalo = max(intervalos)
+        
+        return f"{maior_intervalo.seconds // 3600:02d}:{(maior_intervalo.seconds % 3600) // 60:02d}"
     except Exception:
         return ""
     
