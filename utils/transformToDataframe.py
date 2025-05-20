@@ -12,8 +12,11 @@ brazil_tz = pytz.timezone('America/Sao_Paulo')
 def format_punch_time(ts, locale):
     if ts is None:
         return ""
-    dt_utc = datetime.fromtimestamp(ts / 1000).replace(tzinfo=timezone.utc)
+    
+    dt_utc = datetime.utcfromtimestamp(ts / 1000).replace(tzinfo=timezone.utc)
+    
     dt_brazil = dt_utc.astimezone(brazil_tz)
+    
     return format_time(dt_brazil, format="short", locale=locale)
 
 # Configura o locale para português do Brasil
@@ -82,14 +85,14 @@ def format_punches_as_dataframe(punches: List[Dict], holidays: List) -> pd.DataF
 
 def calcular_intervalo(pontos_str: str) -> str:
     """
-    Calcula o maior intervalo entre as batidas (considerando que o intervalo do almoço é o maior)
+    Calcula o maior intervalo entre as batidas dentro do horário comercial (08:00-17:48).
     Exemplo de entrada: "05:55 - 11:40 | 12:42 - 16:41"
 
     Args:
         pontos_str (str): String com os pontos no formato "HH:MM - HH:MM | HH:MM - HH:MM"
 
     Returns:
-        str: Intervalo formatado como "HH:MM" ou string vazia se não for possível calcular
+        str: Intervalo formatado como "HH:MM" ou string vazia se não houver intervalos válidos.
     """
     try:
         if not pontos_str or pontos_str == "COMPENSAÇÃO FERIADO":
@@ -104,32 +107,42 @@ def calcular_intervalo(pontos_str: str) -> str:
         if len(horarios) == 2:
             return ""
             
-        # Calcula todos os intervalos possíveis entre saídas e entradas subsequentes
+        # Calcula todos os intervalos entre saídas e entradas subsequentes
         intervalos = []
+        fmt = "%H:%M"
+        hora_inicio_comercial = datetime.strptime("08:00", fmt)
+        hora_fim_comercial = datetime.strptime("17:48", fmt)
+        
         for i in range(1, len(horarios)-1, 2):
-            saida = horarios[i]
-            entrada = horarios[i+1]
+            saida = horarios[i].strip()
+            entrada = horarios[i+1].strip()
             
-            fmt = "%H:%M"
-            t1 = datetime.strptime(saida.strip(), fmt)
-            t2 = datetime.strptime(entrada.strip(), fmt)
+            t_saida = datetime.strptime(saida, fmt)
+            t_entrada = datetime.strptime(entrada, fmt)
             
-            intervalo = t2 - t1
+            # Se o intervalo estiver TOTALMENTE fora do horário comercial, ignora
+            if (t_saida < hora_inicio_comercial and t_entrada < hora_inicio_comercial) or \
+               (t_saida > hora_fim_comercial and t_entrada > hora_fim_comercial):
+                continue
+            
+            # Calcula o intervalo
+            intervalo = t_entrada - t_saida
             if intervalo.total_seconds() < 0:
-                intervalo += timedelta(days=1)  # Trata casos em que a hora vira meia-noite
-                
+                intervalo += timedelta(days=1)  # Ajuste para passar meia-noite
+            
             intervalos.append(intervalo)
             
         if not intervalos:
             return ""
             
-        # Pega o maior intervalo (normalmente o do almoço)
+        # Pega o maior intervalo (mesmo que seja menor que 58 minutos)
         maior_intervalo = max(intervalos)
+        horas = maior_intervalo.seconds // 3600
+        minutos = (maior_intervalo.seconds % 3600) // 60
         
-        return f"{maior_intervalo.seconds // 3600:02d}:{(maior_intervalo.seconds % 3600) // 60:02d}"
+        return f"{horas:02d}:{minutos:02d}"
     except Exception:
         return ""
-    
 def get_adjusts(df_punches: pd.DataFrame) -> pd.DataFrame:
     """
     Adiciona colunas calculadas como Intervalo, Horas Extras Disponíveis e Horas Faltantes ao DataFrame de batidas.
