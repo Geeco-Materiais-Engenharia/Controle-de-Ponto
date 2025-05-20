@@ -4,3 +4,4 @@ cryptography
 pandas
 requests
 python-dotenv
+Babel
