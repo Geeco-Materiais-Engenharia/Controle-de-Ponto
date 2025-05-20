@@ -1,10 +1,20 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict
 from utils.utils import converter_data_iso_para_ddmmaaaa, obter_dia_semana, converter_milisegundos_para_hhmm, minutes_to_str, str_to_minutes
 import re
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
+import pytz
+
+brazil_tz = pytz.timezone('America/Sao_Paulo')
+
+def format_punch_time(ts, locale):
+    if ts is None:
+        return ""
+    dt_utc = datetime.fromtimestamp(ts / 1000).replace(tzinfo=timezone.utc)
+    dt_brazil = dt_utc.astimezone(brazil_tz)
+    return format_time(dt_brazil, format="short", locale=locale)
 
 # Configura o locale para português do Brasil
 locale = Locale('pt', 'BR')
@@ -43,7 +53,7 @@ def format_punches_as_dataframe(punches: List[Dict], holidays: List) -> pd.DataF
                 "COMPENSAÇÃO FERIADO"
                 if p[0].get("adjust") and p[0].get("adjustmentReason", {}).get("description") == "COMPENSAÇÃO FERIADO"
                 else " | ".join(
-                    f'{format_time(datetime.fromtimestamp(punch["dateIn"] / 1000), format="short", locale=locale) if punch["dateIn"] is not None else ""} - {format_time(datetime.fromtimestamp(punch["dateOut"] / 1000), format="short", locale=locale) if punch["dateOut"] is not None else ""}'
+                    f'{format_punch_time(punch["dateIn"], locale)} - {format_punch_time(punch["dateOut"], locale)}'
                     for punch in reversed(p)
                 )
             ),
