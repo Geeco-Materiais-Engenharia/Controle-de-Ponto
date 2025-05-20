@@ -49,11 +49,10 @@ def display_dataframes(punches, holidays, colaborador_id):
 
         # 4) exibe no Streamlit (ordenável)
         st.subheader("Pré Ajustes")
-        st.dataframe(styled_error, use_container_width=True)
+        st.write(styled_error, use_container_width=True)
 
         st.subheader("Pontos Ajustados")
-        st.dataframe(styled_adjusted, use_container_width=True)
-
+        st.write(styled_adjusted, use_container_width=True)
 def style_error_cells(val):
     return 'background-color: red; color: white;' if val == "Menos de 4 pontos batidos" else ''
 
