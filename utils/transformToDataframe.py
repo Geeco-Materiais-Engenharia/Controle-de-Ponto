@@ -216,10 +216,10 @@ def adjusted_punches(punches: List[Dict]) -> pd.DataFrame:
 
     for idx, row in df.iterrows():
         # Ajustando tempo de intervalo para ser no mínimo 1:00
-        if str_to_minutes(row["Intervalo"]) < 60:
+        if str_to_minutes(row["Intervalo"]) < 58:
             pontos = row["Pontos"]
             blocos = pontos.split(" | ")
-            minutes_to_reduce = 60 - str_to_minutes(row["Intervalo"])
+            minutes_to_reduce = 58 - str_to_minutes(row["Intervalo"])
 
             if len(blocos) > 1:
                 entrada_saida = blocos[0].split(" - ")
